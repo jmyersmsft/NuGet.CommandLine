@@ -9,8 +9,10 @@ using NuGet.CommandLine.Common;
 using NuGet.Configuration;
 using System.Reflection;
 using NuGet.PackageManagement;
-using NuGet.Client;
 using System.Threading.Tasks;
+using NuGet.Protocol.Core.Types;
+using NuGet.Protocol.Core.v2;
+using NuGet.Protocol.Core.v3;
 
 namespace NuGet.CommandLine.Commands
 {
@@ -39,8 +41,16 @@ namespace NuGet.CommandLine.Commands
         public IMachineWideSettings MachineWideSettings { get; set; }
 
         [ImportMany]
-        public IEnumerable<Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>> ResourceProviders { get; set; }
+        public IEnumerable<Lazy<INuGetResourceProvider>> MefResourceProviders { get; set; }
 
+        public IEnumerable<Lazy<INuGetResourceProvider>> ResourceProviders
+        {
+            get
+            {
+                return MefResourceProviders.Concat(Repository.Provider.GetCoreV3()).Concat(Repository.Provider.GetCoreV2());
+            }
+        }
+        
         [Option("help", AltName = "?")]
         public bool Help { get; set; }
 

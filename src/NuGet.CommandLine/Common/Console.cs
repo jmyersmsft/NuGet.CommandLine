@@ -354,6 +354,11 @@ namespace NuGet.CommandLine.Common
             System.Console.ForegroundColor = oldColor;
         }
 
+        public void ReportError(string message)
+        {
+            WriteError(message);
+        }
+
         public FileConflictAction ResolveFileConflict(string message)
         {
             return FileConflictAction.IgnoreAll;

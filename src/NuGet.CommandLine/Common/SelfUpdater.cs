@@ -1,6 +1,4 @@
-﻿using NuGet.Client;
-using NuGet.PackageManagement;
-using NuGet.PackagingCore;
+﻿using NuGet.PackageManagement;
 using NuGet.Versioning;
 using System;
 using System.Collections.Generic;
@@ -11,6 +9,8 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Packaging.Core;
+using NuGet.Protocol.Core.Types;
 
 namespace NuGet.CommandLine.Common
 {
@@ -56,7 +56,7 @@ namespace NuGet.CommandLine.Common
                     // Get NuGet.exe file
                     using (var targetPackageStream = new MemoryStream())
                     {
-                        await PackageDownloader.GetPackageStream(_source, new PackageIdentity(NuGetCommandLinePackageId, lastetVersion), targetPackageStream, CancellationToken.None);
+                        await PackageDownloader.GetPackageStreamAsync(_source, new PackageIdentity(NuGetCommandLinePackageId, lastetVersion), targetPackageStream, CancellationToken.None);
                         // If for some reason this package doesn't have NuGet.exe then we don't want to use it
                         if (targetPackageStream == null)
                         {

@@ -1,5 +1,4 @@
-﻿using NuGet.Client;
-using NuGet.PackageManagement;
+﻿using NuGet.PackageManagement;
 using NuGet.Packaging;
 using NuGet.ProjectManagement;
 using System;
@@ -12,9 +11,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using NuGet.Protocol.Core.Types;
 
 namespace NuGet.CommandLine.Commands
 {
+    extern alias nugetcore;
+
     [Command(typeof(NuGetCommandResourceType), "restore", "RestoreCommandDescription",
         MinArgs = 0, MaxArgs = 1, UsageSummaryResourceName = "RestoreCommandUsageSummary",
         UsageDescriptionResourceName = "RestoreCommandUsageDescription",
@@ -88,12 +90,14 @@ namespace NuGet.CommandLine.Commands
             var packageSourceProvider = new NuGet.Configuration.PackageSourceProvider(Settings);
             var sourceRepositoryProvider = new SourceRepositoryProvider(packageSourceProvider, ResourceProviders);
             var nuGetPackageManager = new NuGetPackageManager(sourceRepositoryProvider, packagesFolderPath);
-            HashSet<PackageReference> installedPackageReferences;
+            
+            var installedPackageReferences = new Dictionary<PackageReference, List<string>>(new PackageReferenceComparer());
+
             Stopwatch watch = new Stopwatch();
             if (_restoringForSolution)
             {                
                 watch.Restart();
-                installedPackageReferences = GetInstalledPackageReferencesFromSolutionFile(_solutionFileFullPath);
+                GetInstalledPackageReferencesFromSolutionFile(_solutionFileFullPath, installedPackageReferences);
                 watch.Stop();
                 DisplayExecutedTime(watch.Elapsed, "GetInstalledPackageReferencesFromSolution");
             }
@@ -108,19 +112,17 @@ namespace NuGet.CommandLine.Commands
                 }
 
                 watch.Restart();
-                installedPackageReferences = GetInstalledPackageReferences(_packagesConfigFileFullPath);
+                GetInstalledPackageReferences(_packagesConfigFileFullPath, installedPackageReferences, Constants.PackageReferenceFile);
                 watch.Stop();
                 DisplayExecutedTime(watch.Elapsed, "GetInstalledPackageReferences");
             }
 
-            watch.Restart();
-            var missingPackages = PackageRestoreManager.GetMissingPackages(nuGetPackageManager, installedPackageReferences);
-            watch.Stop();
-            DisplayExecutedTime(watch.Elapsed, "GetMissingPackages");
+            var missingPackages = new MissingPackagesInfo(
+                    installedPackageReferences.ToDictionary(x => x.Key, x => (IReadOnlyCollection<string>) x.Value));
 
             watch.Restart();
             // If sourceRepositories parameter below is null, then the sourceRepositories from the SourceRepositoryProvider in NuGetPackageManager will be used
-            await PackageRestoreManager.RestoreMissingPackages(nuGetPackageManager, missingPackages, Console, CancellationToken.None,
+            await PackageRestoreManager.RestoreMissingPackagesAsync(nuGetPackageManager, missingPackages, Console, CancellationToken.None,
                 packageRestoredEvent: null, sourceRepositories: GetSourceRepositoriesFromSourceSwitch(sourceRepositoryProvider));
             watch.Stop();
             DisplayExecutedTime(watch.Elapsed, "RestorePackages");
@@ -261,7 +263,7 @@ namespace NuGet.CommandLine.Commands
             throw new InvalidOperationException(LocalizedResourceManager.GetString("RestoreCommandCannotDeterminePackagesFolder"));
         }
 
-        private HashSet<PackageReference> GetInstalledPackageReferencesFromSolutionFile(string solutionFileFullPath)
+        private void GetInstalledPackageReferencesFromSolutionFile(string solutionFileFullPath, Dictionary<PackageReference, List<string>> installedPackageReferences)
         {
             ISolutionParser solutionParser;
             if (EnvironmentUtility.IsMonoRuntime)
@@ -273,7 +275,6 @@ namespace NuGet.CommandLine.Commands
                 solutionParser = new MSBuildSolutionParser();
             }
 
-            var installedPackageReferences = new HashSet<PackageReference>(new PackageReferenceComparer());
             IEnumerable<string> projectFiles = Enumerable.Empty<string>();
             try
             {
@@ -293,7 +294,8 @@ namespace NuGet.CommandLine.Commands
             {
                 if (!File.Exists(projectFile))
                 {
-                    Console.WriteWarning(LocalizedResourceManager.GetString("RestoreCommandProjectNotFound"), projectFile);
+                    Console.WriteWarning(LocalizedResourceManager.GetString("RestoreCommandProjectNotFound"),
+                        projectFile);
                     continue;
                 }
 
@@ -303,21 +305,28 @@ namespace NuGet.CommandLine.Commands
 
                 string projectName = Path.GetFileNameWithoutExtension(projectFile);
 
-                CommandLineHelper.AddRange(installedPackageReferences, GetInstalledPackageReferences(projectConfigFilePath));
+                GetInstalledPackageReferences(projectConfigFilePath, installedPackageReferences, projectName);
             }
-
-            return installedPackageReferences;
         }
 
-        private HashSet<PackageReference> GetInstalledPackageReferences(string projectConfigFilePath)
+        private void GetInstalledPackageReferences(string projectConfigFilePath, Dictionary<PackageReference, List<string>> installedPackageReferences, string projectName)
         {
             if (File.Exists(projectConfigFilePath))
             {
                 var reader = new PackagesConfigReader(XDocument.Load(projectConfigFilePath));
-                return new HashSet<PackageReference>(reader.GetPackages(), new PackageReferenceComparer());
-            }
 
-            return new HashSet<PackageReference>(new PackageReferenceComparer());
+                foreach (var reference in reader.GetPackages())
+                {
+                    List<string> list;
+                    if (!installedPackageReferences.TryGetValue(reference, out list))
+                    {
+                        list = new List<string>();
+                        installedPackageReferences.Add(reference, list);
+                    }
+
+                    list.Add(projectName);
+                }
+            }
         }
     }
 }

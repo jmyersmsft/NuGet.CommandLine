@@ -1,8 +1,6 @@
-﻿using NuGet.Client;
-using NuGet.CommandLine.Common;
+﻿using NuGet.CommandLine.Common;
 using NuGet.Configuration;
 using NuGet.PackageManagement;
-using NuGet.PackagingCore;
 using NuGet.ProjectManagement;
 using NuGet.Resolver;
 using NuGet.Versioning;
@@ -12,6 +10,8 @@ using System.ComponentModel.Composition;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Packaging.Core;
+using NuGet.Protocol.Core.Types;
 
 namespace NuGet.CommandLine.Commands
 {

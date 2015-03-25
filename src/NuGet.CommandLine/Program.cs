@@ -1,5 +1,4 @@
-﻿using NuGet.Client;
-using NuGet.CommandLine.Commands;
+﻿using NuGet.CommandLine.Commands;
 using NuGet.CommandLine.Common;
 using NuGet.PackageManagement;
 using System;
