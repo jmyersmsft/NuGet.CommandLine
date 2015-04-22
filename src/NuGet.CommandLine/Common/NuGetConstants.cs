@@ -17,5 +17,7 @@
         public static readonly string ReadmeFileName = "readme.txt";
 
         public static readonly string NuGetSolutionSettingsFolder = ".nuget";
+
+        public static readonly string PackagesConfigExtension = ".config";
     }
 }
