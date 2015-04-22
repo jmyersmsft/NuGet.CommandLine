@@ -162,7 +162,7 @@ namespace NuGet.CommandLine.Commands
             }
             else
             {
-                if (Path.GetFileName(Arguments[0]).Equals(Constants.PackageReferenceFile, StringComparison.OrdinalIgnoreCase))
+                if (Path.GetExtension(Arguments[0]).Equals(Constants.ConfigExtension, StringComparison.OrdinalIgnoreCase))
                 {
                     // restoring from packages.config file
                     _restoringForSolution = false;
