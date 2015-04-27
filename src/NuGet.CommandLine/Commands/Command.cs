@@ -111,7 +111,7 @@ namespace NuGet.CommandLine.Commands
                     }
 
                     Settings = Configuration.Settings.LoadDefaultSettings(
-                        Path.GetFullPath(ConfigFile),
+                        Path.GetFullPath(directory),
                         configFileName,
                         MachineWideSettings);
                 }
